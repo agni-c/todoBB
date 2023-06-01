@@ -1,106 +1,67 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { MouseEvent, TouchEvent, PointerEvent, useRef } from "react"
-import { useState } from "react"
+import React, { useState } from "react"
 import { TodoInterface } from "../data"
 import { motion } from "framer-motion"
 import { makeEnterAccessible } from "../utils/helpers"
+import { useSortable } from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 type TodoListProps = {
   todoItem: TodoInterface
-  setTodos: React.Dispatch<React.SetStateAction<TodoInterface[]>>
-  todos: TodoInterface[]
-  index: number
-  dragItem: React.MutableRefObject<number | null>
-  dragOverItem: React.MutableRefObject<number | null>
+  // setTodos: React.Dispatch<React.SetStateAction<TodoInterface[]>>
+  editTodo: (id: string, content: string) => void
+  removeTodo: (id: string) => void
+  enterEditMode: (id: string) => void
+  isEditMode: boolean
+  editItemId: string
+  content: string
+  setContent: React.Dispatch<React.SetStateAction<string>>
+  // index: number
+  // dragItem: React.MutableRefObject<number | null>
+  // dragOverItem: React.MutableRefObject<number | null>
+  // onDragStart: (e: any, index: number) => void
+  // onDragEnter: (e: React.DragEvent<HTMLDivElement>, index: number) => void
+  // onDragEnd: () => void
 }
 
 // this component will: take care of the list item functionality
 const TodoListItem = ({
   todoItem,
-  setTodos,
-  todos,
-  index,
-  dragItem,
-  dragOverItem,
+  editTodo,
+  enterEditMode,
+  removeTodo,
+  content,
+  editItemId,
+  isEditMode,
+  setContent,
 }: TodoListProps) => {
-  const [isEditMode, setIsEditMode] = useState(false)
-  const [editItemId, setEditItemId] = useState("")
-  const [content, setContent] = useState("")
-
-  const editTodo = (id: string, content: string) => {
-    if (!content) return setIsEditMode(false)
-
-    const newTodos = todos.map((todo) => {
-      if (todo.id === id) {
-        return { ...todo, content }
-      }
-      return todo
-    })
-    setTodos(newTodos)
-    setIsEditMode(false)
-    setContent("")
-  }
-  const removeTodo = (id: string) => {
-    if (!id) return
-    const newTodos = todos.filter((todo) => todo.id !== id)
-    setTodos(newTodos)
-  }
-  const enterEditMode = (id: string) => {
-    setEditItemId(id)
-    setIsEditMode(true)
-  }
+  const [isCompleted, setIsCompleted] = useState(todoItem.completed)
 
   //D&D
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: todoItem.id })
 
-  const onDragStart = (e: any, index: number) => {
-    dragItem.current = index
-    console.log("on drag start", index)
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
   }
-
-  const onDragEnter = (e: React.DragEvent<HTMLDivElement>, index: number) => {
-    dragOverItem.current = index
-    console.log("on drag enter", index)
-  }
-
-  const onDragEnd = () => {
-    const _todos = [...todos]
-
-    if (dragItem.current === null || dragOverItem.current === null)
-      return console.log({
-        dragItemIndex: dragItem.current,
-        dragOverItemIndex: dragOverItem.current,
-      })
-
-    const [todoInDrag] = _todos.splice(dragItem.current ?? -1, 1)
-    _todos.splice(dragOverItem.current ?? -1, 0, todoInDrag)
-    dragItem.current = null
-    dragOverItem.current = null
-    console.log({ _todos })
-
-    setTodos(_todos)
-  }
-
   return (
     <motion.div
-      key={todoItem.id}
       className={`list-todos w-3/5 bg-purple-700 p-2 mb-2 rounded-md text-white flex justify-between items-center glowing-border`}
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.8, opacity: 0 }}
-      transition={{ type: "just" }}
+      // initial={{ scale: 0.8, opacity: 0 }}
+      // animate={{ scale: 1, opacity: 1 }}
+      // exit={{ scale: 0.8, opacity: 0 }}
+      // transition={{ type: "just" }}
+      // whileHover={{ scale: 1.04 }}
+      // onDragStart={(e) => onDragStart(e, index)}
+      // onDragOver={(ev) => ev.preventDefault()}
+      // onDragEnter={(e) => onDragEnter(e, index)}
+      // onDragEnd={onDragEnd}
       draggable
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-      dragTransition={{
-        bounceStiffness: 200,
-        bounceDamping: 10,
-        min: 0,
-        max: 100,
-      }}
-      onDragStart={(e) => onDragStart(e, index)}
-      onDragOver={(ev) => ev.preventDefault()}
-      onDragEnter={(e) => onDragEnter(e, index)}
-      onDragEnd={onDragEnd}
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
     >
       {isEditMode && editItemId === todoItem.id ? (
         <input
@@ -113,13 +74,24 @@ const TodoListItem = ({
           autoFocus={true}
         />
       ) : (
-        <span
-          onDoubleClick={() => {
-            enterEditMode(todoItem.id)
-          }}
-        >
-          {todoItem.content}
-        </span>
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            className="w-5 h-5 mr-2 "
+            name={todoItem.content}
+            id={todoItem.id}
+            checked={isCompleted}
+            onChange={() => setIsCompleted((isCompleted) => !isCompleted)}
+          />
+          <span
+            className={`${isCompleted ? "line-through" : ""} `}
+            onDoubleClick={() => {
+              enterEditMode(todoItem.id)
+            }}
+          >
+            {todoItem.content}
+          </span>
+        </div>
       )}
 
       <span className="action-tray w-24 flex justify-between bg-white p-1  text-black text-sm rounded-full">
